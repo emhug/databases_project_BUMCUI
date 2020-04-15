@@ -2,43 +2,30 @@
 # Python code to read in the strain data
 
 import pandas as pd
-#from sqlalchemy import create_engine
 import pymysql
 
 # open the file into dataframe
-data = pd.read_excel('/Users/morganrozman/Documents/BU_Spring20/BF768/Project/Database_Idea_1.xlsx')
+data = pd.read_excel('/home/students_20/mrozman/Proj/Database_Idea_1.xlsx')
 
 # change dataframe column names, and remove unnecessary columns
-
 data.rename(str.lower, axis = 'columns', inplace=True)
 data.columns = data.columns.str.replace(' |/', '_', regex=True)
 data.columns = data.columns.str.replace('\(|\)', '', regex=True)
-data.rename(columns={'temp__c_dsmz':'temp_dsmz','media_obs_2':'media_obs2', 'media_obs_3':'media_obs3', 'lab_location':'lab'}, inplace=True)
+data.rename(columns={'temp__c_dsmz':'tempc_dsmz','media_obs_2':'media_obs2', 'media_obs_3':'media_obs3', 'lab_location':'lab'}, inplace=True)
 
-# save lab because they need to be inserted to new table
-lab = pd.DataFrame(data['lab'])
-
-# remove box
-data = data.drop(columns=['box', 'lab'])
-
-# print(list(data.columns))
-# print(lab)
+# remove cols we dont need
+data = data.drop(columns=['box', 'lab', 'media_komodo', 'media_dsmz', 'tempc_dsmz',	'media_obs', 'media_obs2', 'media_obs3'])
+data = data.fillna('NULL')
+cols = ", ".join([str(i) for i in data.columns.tolist()])
 
 # connect to db
 connection = pymysql.connect(host="bioed.bu.edu", user="mrozman", password="mrozman", db="groupC", port=4253)
 cursor = connection.cursor()
 
-# get col names
-cols = "','".join([str(i) for i in data.columns.tolist()])
-
 # insert rows
-for i,row in data.iterrows():
-    sql = "INSERT INTO 'Strain' ('" + cols + "') VALUES (" + "%s,"*(len(row)-1) + "%s)"
-    cursor.execute(sql, tuple(row))
-
-    connection.commit()
-#
- create an engine for to_sql
-# engine = create_engine("mysql+pymysql://mrozman@bioed.bu.edu:4253/{db}".format(user="mrozman", pw="mrozman", db="groupC"))
-
-# data.to_sql('Strain', con = engine, if_exists = 'append', chunksize = 1000)
+data = data.applymap(str)
+for i in range(len(data)):
+	row = tuple(data.iloc[i, :])
+	sql = "INSERT INTO Strain (" + cols + ") VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')"%(row)
+	cursor.execute(sql)
+	connection.commit()
